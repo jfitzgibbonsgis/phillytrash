@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Leaflet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
+    <style>
+    
+    html { height:100%;}
+    body {
+        height:100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    #map {
+        width: 100%;
+        margin: 0 auto;
+        height: 95%;
+    }
+
+.info {
+    z-index: 1000;
+    position: absolute;
+    right: 40%;
+    top: 5%;
+    padding: 6px 8px;
+    font: 14px Arial, Helvetica, sans-serif;
+    text-align: center;
+    background: white;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+}
+
+.info h1 {
+    font-size: 16px;
+    margin: 0 0 5px;
+    color: #777777;
+}
+
+
+.legend {
+    line-height: 18px;
+    color: #333333;
+    font-family: 'Open Sans', Helvetica, sans-serif;
+    padding: 6px 8px;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.legend i {
+    width: 28px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+
+.legend p {
+    font-size: 12px;
+    line-height: 18px;
+    margin: 0;
+}
+
+    </style>
+</head>
+<body>
+    <!-- Our web map and content will go here -->
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <div id="map" style="width: 1000px; height: 600px">
+    </div>
+    <script>
+        var map = L.map('map', {center: [39.981192, -75.155399], zoom: 10});
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        map.doubleClickZoom.disable();
+
+        
+
+
+        var wphillypoint = L.marker([39.97725, -75.22677]).addTo(map);
+        wphillypoint.bindPopup("West Philadelphia Pilot Area");
+
+        var swphillypoint = L.marker([39.93720, -75.21920]).addTo(map);
+        swphillypoint.bindPopup("Southwest Philadelphia Pilot Area");
+
+        var kenspoint = L.marker([39.99638, -75.11418]).addTo(map);
+        kenspoint.bindPopup("Kensington Pilot Area");
+
+        var strawpoint = L.marker([39.99111, -75.18]).addTo(map);
+        strawpoint.bindPopup("Strawberry Mansion Pilot Area");
+
+        var loganpoint = L.marker([40.03454, -75.14047]).addTo(map);
+        loganpoint.bindPopup("Logan Pilot Area");
+
+        var sphillypoint = L.marker([39.91895, -75.15753]).addTo(map);
+        sphillypoint.bindPopup("South Philadelphia Pilot Area");
+
+
+        // Create an Empty Popup
+        var popup = L.popup();
+
+        // Write function to set Properties of the Popup
+        function onMapClick(e) {
+            popup
+                .setLatLng(e.latlng)
+                .setContent("You clicked the map at " + e.latlng.toString())
+                .openOn(map);
+        }
+        
+        // Listen for a click event on the Map element
+        map.on('click', onMapClick);
+
+       
+
+        var neighborhoodsLayer = null;
+        $.getJSON("data/phillyproject.geojson",function(data){
+            neighborhoodsLayer = L.geoJson(data, {
+                style: styleFunc,
+                onEachFeature: onEachFeatureFunc
+            }).addTo(map);
+        });
+
+        // Set style function that sets fill color property 
+        function styleFunc(feature) {
+            return {
+                fillColor: setColorFunc(feature.properties.Avg_DIVISI),
+                fillOpacity: 0.9,
+                weight: 1,
+                opacity: 1,
+                color: '#ffffff',
+                dashArray: '3'
+            };
+        }
+
+        // Set function for color ramp
+        function setColorFunc(density){
+            return density > 2.5 ? '#d94701' :
+                   density > 2 ? '#fd8d3c' :
+                   density > 1.5 ?  '#fdbe85' :
+                   density > 1 ?  '#feedde' :
+                                  '#BFBCBB';
+        };        
+
+        // Now we’ll use the onEachFeature option to add the listeners on our state layers:
+        function onEachFeatureFunc(feature, layer){
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomFeature
+            });
+            layer.bindPopup('<b>Neighborhood: </b>'+feature.properties.LISTNAME + '<br />' +
+                '<b>Average Litter Rating: </b>'+feature.properties.Avg_DIVISI + '<br />' +
+                '<b>Number of City Wastebaskets: </b>'+feature.properties.Count_1 + '<br />' +
+                '<b>Number of trash-related 311 calls: </b>'+feature.properties.Count_2 + '<br />' +
+                '<b>Number of participants in recycle program: </b>'+feature.properties.Count_3
+                )
+        }
+
+        function highlightFeature(e){
+            var layer = e.target;
+
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            // for different web browsers
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+        }
+
+        // Define what happens on mouseout:
+        function resetHighlight(e) {
+            neighborhoodsLayer.resetStyle(e.target);
+        }
+
+        // As an additional touch, let’s define a click listener that zooms to the state: 
+        function zoomFeature(e){
+            console.log(e.target.getBounds());
+            map.fitBounds(e.target.getBounds().pad(1.5));
+        }
+
+        //L.control.title({"Philadelphia"}).addTo(map);
+
+        // Add Scale Bar to Map
+        L.control.scale({position: 'bottomleft'}).addTo(map);
+
+        // Create Leaflet Control Object for Legend
+        var legend = L.control({position: 'bottomright'});
+
+        // Function that runs when legend is added to map
+        legend.onAdd = function (map) {
+            // Create Div Element and Populate it with HTML
+            var div = L.DomUtil.create('div', 'legend');            
+            div.innerHTML += '<b>Average Litter Index Rating</b><br />';
+            div.innerHTML += '<br>';
+            div.innerHTML += '<i style="background: #d94701"></i><p>2.5+</p>';
+            div.innerHTML += '<i style="background: #fd8d3c"></i><p>2-2.5</p>';
+            div.innerHTML += '<i style="background: #fdbe85"></i><p>1.5-2</p>';
+            div.innerHTML += '<i style="background: #feedde"></i><p>1-1.5</p>';
+            div.innerHTML += '<hr>';
+            div.innerHTML += '<i style="background: #BFBCBB"></i><p>No Data</p>';
+    
+            // Return the Legend div containing the HTML content
+            return div;
+        };
+
+        // Add Legend to Map
+        legend.addTo(map);
+
+    </script>
+</body>
+</html>
